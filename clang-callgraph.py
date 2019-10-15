@@ -5,6 +5,7 @@ from clang.cindex import CursorKind, Index, CompilationDatabase
 from collections import defaultdict
 import sys
 import json
+import os
 """
 Dumps a callgraph of a function in a codebase
 usage: callgraph.py file.cpp|compile_commands.json [-x exclude-list] [extra clang args...]
@@ -163,11 +164,18 @@ def main():
     print('reading source files...')
     for cmd in read_compile_commands(cfg['db']):
         index = Index.create()
-        c = [
-            x for x in cmd['command'].split()
-            if x.startswith('-I') or x.startswith('-std=') or x.startswith('-D')
-        ] + cfg['clang_args']
-        tu = index.parse(cmd['file'], c)
+        c = []
+        if cmd.has_key('command'):
+            c = [
+                x for x in cmd['command'].split()
+                if x.startswith('-I') or x.startswith('-std=') or x.startswith('-D')
+            ] + cfg['clang_args']
+        else:
+            # cut compiler command from argument list
+            c = cmd['arguments'][1:] + cfg['clang_args']
+        fn = cmd['directory'] + os.sep + cmd['file']
+        print('Parsing ' + fn)
+        tu = index.parse(fn, c)
         print(cmd['file'])
         if not tu:
             parser.error("unable to load input")
